@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    volumes:
+      - nextcloud-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+      image: nextcloud:latest
+      container_name: nextcloud
+      restart: unless-stopped
+      ports:
+        - "8080:80"
+      depends_on:
+        db:
+          condition: service_healthy
+      volumes:
+        - nextcloud-data:/var/www/html
+      environment:
+        # Database
+        - POSTGRES_HOST=db
+        - POSTGRES_DB=${POSTGRES_DB}
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+        # S3 Object Store (Primary Storage)
+        - NEXTCLOUD_OBJECTSTORE_S3_BUCKET=${OBJECTSTORE_S3_BUCKET}
+        - NEXTCLOUD_OBJECTSTORE_S3_REGION=${OBJECTSTORE_S3_REGION}
+        - NEXTCLOUD_OBJECTSTORE_S3_USE_IAM_ROLE=true
+        - NEXTCLOUD_OBJECTSTORE_S3_USEPATH_STYLE=false
+        - NEXTCLOUD_OBJECTSTORE_S3_AUTOCREATE=false
+        - NEXTCLOUD_OBJECTSTORE_S3_SSL=true
+
+volumes:
+  nextcloud-db:
+  nextcloud-data:
+
+
+

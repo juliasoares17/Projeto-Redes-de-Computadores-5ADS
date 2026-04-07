@@ -27,7 +27,7 @@
 5. Envie o script `server-conf.sh` para a instância EC2 usando SCP e defina as permissões apropriadas
 ```bash
 scp -i ssh-key.pem server-conf.sh ubuntu@<public-id>:/home/ubuntu/server-conf.sh
-scp -i ssh-key.pem -r /chat ubuntu@<public-id>:/home/ubuntu/chat
+scp -i ssh-key.pem -r /chat ubuntu@<public-id>:/home/ubuntu/cloud
 ssh -i ssh-key.pem ubuntu@<public-id>
 ```
 
