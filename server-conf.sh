@@ -2,7 +2,7 @@
 
 apt update
 
-apt install -y iproute2 iputils-ping net-tools openvpn docker.io
+apt install -y iproute2 iputils-ping net-tools openvpn
 
 openvpn --genkey secret /etc/openvpn/vpn-key
 
@@ -40,12 +40,7 @@ systemctl daemon-reload
 
 # systemctl status myvpn@server
 
-iptables -A INPUT -p tcp --dport 8000 ! -i tun0 -j DROP
+iptables -D DOCKER-USER -i tun0 -p tcp --dport 8080 -j ACCEPT 2>/dev/null || true
+iptables -D DOCKER-USER -p tcp --dport 8080 -j DROP 2>/dev/null || true
 
 netstat -unlp
-
-cd chat
-docker build -t chat-server -f Dockerfile.chat .
-docker run -d -p 8000:8000 --name chat-server chat-server
-
-ss -tulpn | grep -E '1194|8000'
