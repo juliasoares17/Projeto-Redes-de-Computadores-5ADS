@@ -106,6 +106,37 @@ sudo ./client-conf.sh client1
 systemctl status openvpn-client@client
 ```
 
+## Acessar o NextCloud via terminal
+
+Para clientes sem interface gráfica, o NextCloud pode ser acessado via WebDAV com `curl`:
+
+Listar arquivos:
+```bash
+curl -u admin:changeme -X PROPFIND -H "Depth: 1" http://10.0.0.1:8080/remote.php/dav/files/admin/
+```
+
+Upload de arquivo:
+```bash
+curl -u admin:changeme -T arquivo.txt http://10.0.0.1:8080/remote.php/dav/files/admin/arquivo.txt
+```
+
+Download de arquivo:
+```bash
+curl -u admin:changeme -o arquivo.txt http://10.0.0.1:8080/remote.php/dav/files/admin/arquivo.txt
+```
+
+Criar pasta:
+```bash
+curl -u admin:changeme -X MKCOL http://10.0.0.1:8080/remote.php/dav/files/admin/nova-pasta/
+```
+
+Deletar arquivo:
+```bash
+curl -u admin:changeme -X DELETE http://10.0.0.1:8080/remote.php/dav/files/admin/arquivo.txt
+```
+
+Substitua `admin:changeme` pelas credenciais definidas no `.env`.
+
 ## Revogar acesso de um cliente
 
 Para revogar o certificado de um cliente (bloquear o acesso):
