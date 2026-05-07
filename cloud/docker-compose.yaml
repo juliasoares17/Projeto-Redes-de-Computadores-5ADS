@@ -18,42 +18,73 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-      image: nextcloud:latest
-      container_name: nextcloud
-      restart: unless-stopped
-      ports:
-        - "10.0.0.1:8080:80"
-      depends_on:
-        db:
-          condition: service_healthy
-      volumes:
-        - nextcloud-data:/var/www/html
-      environment:
-        # Database
-        - POSTGRES_HOST=db
-        - POSTGRES_DB=${POSTGRES_DB}
-        - POSTGRES_USER=${POSTGRES_USER}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  app1:
+    image: nextcloud:latest
+    container_name: nextcloud1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
 
-        # Admin
-        - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
-        - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+  app2:
+    image: nextcloud:latest
+    container_name: nextcloud2
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
 
-        # Trusted domains
-        - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+  app3:
+    image: nextcloud:latest
+    container_name: nextcloud3
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
 
-        # # S3 Object Store (Primary Storage)
-        # - NEXTCLOUD_OBJECTSTORE_S3_BUCKET=${OBJECTSTORE_S3_BUCKET}
-        # - NEXTCLOUD_OBJECTSTORE_S3_REGION=${OBJECTSTORE_S3_REGION}
-        # - NEXTCLOUD_OBJECTSTORE_S3_USE_IAM_ROLE=true
-        # - NEXTCLOUD_OBJECTSTORE_S3_USEPATH_STYLE=false
-        # - NEXTCLOUD_OBJECTSTORE_S3_AUTOCREATE=false
-        # - NEXTCLOUD_OBJECTSTORE_S3_SSL=true
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: nextcloud-lb
+    restart: unless-stopped
+    ports:
+      - "10.0.0.1:8080:80"
+    depends_on:
+      - app1
+      - app2
+      - app3
 
 volumes:
   nextcloud-db:
   nextcloud-data:
-
-
-

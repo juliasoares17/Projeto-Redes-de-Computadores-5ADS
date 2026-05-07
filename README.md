@@ -4,21 +4,53 @@
 * O servidor VPN será executado em uma instância EC2 na AWS
 * O servidor VPN será implementado usando OpenVPN com autenticação por certificados (Easy-RSA)
 * O servidor VPN será configurado para a porta 1194/UDP
-* A aplicação de chat será implementada em Python e será executada na mesma instância EC2 do servidor VPN
-* A aplicação de chat permitirá que clientes conectados à VPN enviem mensagens entre si
-* A aplicação de chat será executada na porta 8000/TCP
+* A aplicação NextCloud será executada na mesma instância EC2 do servidor VPN
+* O NextCloud será distribuído em 3 instâncias com balanceamento de carga via Nginx
+* As 3 instâncias compartilham o mesmo volume de dados e o mesmo banco PostgreSQL
+* O acesso ao NextCloud é feito exclusivamente pela VPN na porta 8080/TCP
 
+## Arquitetura
 
-### Configuração do servidor
+```
+Cliente VPN ──► 10.0.0.1:8080 (Nginx LB)
+                     │
+            ┌────────┼────────┐
+            ▼        ▼        ▼
+          app1     app2     app3
+        (NC :80) (NC :80) (NC :80)
+            │        │        │
+            └────────┼────────┘
+                     ▼
+            Volume compartilhado
+            (nextcloud-data)
+                     │
+                     ▼
+               PostgreSQL
+              (nextcloud-db)
+```
+
+### Configuração do servidor VPN
 * O arquivo `setup-pki.sh` inicializa a PKI com Easy-RSA, gera a CA, o certificado do servidor, parâmetros DH e a chave TLS-auth
 * O arquivo `server-conf.sh` contém a configuração do servidor OpenVPN em modo TLS
 * O arquivo `gen-client.sh` gera certificados individuais para cada cliente
 
-### Configuração do cliente
+### Configuração do cliente VPN
 * O arquivo `client-conf.sh` contém a configuração do cliente OpenVPN. Recebe o nome do cliente como parâmetro
+
+### Configuração do Load Balancer
+* O arquivo `cloud/nginx.conf` configura o Nginx como proxy reverso com balanceamento `ip_hash`
+* O arquivo `cloud/Dockerfile.nginx` constrói a imagem do Nginx com a configuração personalizada
+* O `ip_hash` garante que o mesmo cliente sempre acesse o mesmo backend (persistência de sessão)
+* O header `X-Backend-Server` na resposta permite verificar qual backend atendeu a requisição
+
+### Configuração do NextCloud
+* 3 instâncias NextCloud (`app1`, `app2`, `app3`) compartilham o mesmo volume Docker (`nextcloud-data`)
+* As 3 instâncias apontam para o mesmo banco PostgreSQL
+* Nenhuma instância expõe portas diretamente — o acesso é feito exclusivamente pelo Nginx
 
 
 ## Iniciar servidor
+
 1. Crie uma instância EC2 com Ubuntu Server
 2. Gere um par de chaves para acesso SSH e baixe a chave privada (por exemplo, `ssh-key.pem`)
 3. Anote o endereço IP público da instância EC2 para uso posterior na configuração do cliente
@@ -74,14 +106,11 @@ iptables -A DOCKER-USER -p tcp --dport 8080 -j DROP
 sudo systemctl status myvpn@server
 ```
 
-13. Verifique se o NextCloud está em execução
+13. Verifique se todos os containers estão em execução
 ```bash
-docker inspect nextcloud --format '{{json .NetworkSettings.Ports}}'
+docker compose -f ./cloud/docker-compose.yaml ps
 ```
-o resultado deve ser algo como:
-```bash
-{"80/tcp":[{"HostIp":"10.0.0.1","HostPort":"8080"}]}
-```
+O resultado deve mostrar 5 containers rodando: `nextcloud-db`, `nextcloud1`, `nextcloud2`, `nextcloud3` e `nextcloud-lb`.
 
 ## Iniciar cliente (VM local ou outra instância EC2)
 
@@ -104,6 +133,21 @@ sudo ./client-conf.sh client1
 4. Verifique o status do cliente OpenVPN para garantir que está em execução corretamente
 ```bash
 systemctl status openvpn-client@client
+```
+
+## Verificar o balanceamento de carga
+
+Para verificar qual backend está atendendo suas requisições:
+```bash
+curl -sI http://10.0.0.1:8080 | grep X-Backend-Server
+```
+O header `X-Backend-Server` mostra o IP interno do container que respondeu.
+
+Para ver o mapeamento de IP para container:
+```bash
+docker inspect nextcloud1 --format '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+docker inspect nextcloud2 --format '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+docker inspect nextcloud3 --format '{{.Name}}: {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
 ```
 
 ## Acessar o NextCloud via terminal
